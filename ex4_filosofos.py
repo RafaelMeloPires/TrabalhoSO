@@ -38,9 +38,7 @@ def cliente_inseguro(id_cliente):
     else:
         print(f"  Cliente {id_cliente}: sem cadeira, foi embora (sem proteção)")
 
-# =============================================================================
 # VERSÃO CORRIGIDA (semáforos + mutex)
-# =============================================================================
 
 clientes_sem    = threading.Semaphore(0)
 barbeiro_sem    = threading.Semaphore(0)

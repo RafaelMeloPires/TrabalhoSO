@@ -13,9 +13,7 @@ from queue import Queue
 
 N_PROCESSOS = 8
 
-# =============================================================================
 # VERSÃO SEM PROTEÇÃO (impressão simultânea, saída entrelaçada)
-# =============================================================================
 
 saida_insegura = []
 
@@ -44,9 +42,7 @@ def versao_insegura():
     entrelaçamentos = len(processos_vistos) - len(set(processos_vistos))
     print(f"[SEM PROTEÇÃO]  Entrelaçamentos detectados: {entrelaçamentos}")
 
-# =============================================================================
 # VERSÃO CORRIGIDA — fila FCFS + mutex de impressora
-# =============================================================================
 
 fila_impressao   = Queue()
 mutex_impressora = threading.Lock()

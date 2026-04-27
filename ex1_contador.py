@@ -15,9 +15,7 @@ import time
 
 ITERACOES = 50   # menor número de iterações, pois cada uma tem delay proposital
 
-# =============================================================================
 # VERSÃO SEM PROTEÇÃO (demonstra condição de corrida)
-# =============================================================================
 
 contador_inseguro = 0
 
@@ -47,9 +45,7 @@ def versao_insegura():
     t1.join();  t2.join()
     print(f"[SEM PROTEÇÃO]  Resultado esperado: 0 | Resultado obtido: {contador_inseguro}")
 
-# =============================================================================
 # VERSÃO CORRIGIDA (exclusão mútua com Lock)
-# =============================================================================
 
 contador_seguro = 0
 lock = threading.Lock()

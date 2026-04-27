@@ -12,9 +12,7 @@ import random
 recurso_compartilhado = {"valor": 0}
 log = []
 
-# =============================================================================
 # VERSÃO SEM PROTEÇÃO (escritor pode sobrescrever dado em uso)
-# =============================================================================
 
 # Lê o valor do recurso sem garantia de consistência; outro escritor pode alterá-lo durante a leitura.
 def leitor_inseguro(id_leitor):
@@ -41,10 +39,10 @@ def versao_insegura():
     for entry in log:
         print(f"  {entry}")
 
-# =============================================================================
+
 # VERSÃO CORRIGIDA — preferência a leitores
 # Política: leitores têm prioridade; escritor espera não haver leitores.
-# =============================================================================
+
 
 mutex_leitores = threading.Lock()
 mutex_escrita  = threading.Lock()

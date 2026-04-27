@@ -12,9 +12,9 @@ import random
 
 N_VEICULOS = 12
 
-# =============================================================================
+
 # VERSÃO SEM PROTEÇÃO (colisão: veículos de sentidos opostos na ponte)
-# =============================================================================
+
 
 na_ponte_inseguro = []
 
@@ -38,11 +38,11 @@ def versao_insegura():
     for t in threads: t.join()
     print("[SEM PROTEÇÃO]  Travessia sem controle — colisões possíveis")
 
-# =============================================================================
+
 # VERSÃO CORRIGIDA — controle por sentido com prevenção de inanição
 # Política: um sentido ocupa a ponte; o outro aguarda.
 #           Quando nenhum veículo do sentido atual está na ponte, o outro lado passa.
-# =============================================================================
+
 
 mutex_ponte   = threading.Lock()
 ponte_livre   = threading.Lock()

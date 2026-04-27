@@ -12,9 +12,7 @@ import random
 CAPACIDADE  = 4
 N_VEICULOS  = 10
 
-# =============================================================================
 # VERSÃO SEM PROTEÇÃO (permite ocupação acima da capacidade)
-# =============================================================================
 
 vagas_inseguro = CAPACIDADE
 log_inseguro   = []
@@ -48,9 +46,9 @@ def versao_insegura():
     else:
         print(f"  Mínimo de vagas livres observado: {min_vagas} (pode variar por timing)")
 
-# =============================================================================
+
 # VERSÃO CORRIGIDA (semáforo de contagem + mutex para o log)
-# =============================================================================
+
 
 semaforo_vagas = threading.Semaphore(CAPACIDADE)
 mutex_log      = threading.Lock()

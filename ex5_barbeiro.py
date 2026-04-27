@@ -13,9 +13,7 @@ import random
 CADEIRAS_ESPERA = 3
 N_CLIENTES      = 10
 
-# =============================================================================
 # VERSÃO SEM PROTEÇÃO (race condition na contagem de clientes)
-# =============================================================================
 
 clientes_espera_inseguro = 0
 
@@ -38,9 +36,7 @@ def cliente_inseguro(id_cliente):
     else:
         print(f"  Cliente {id_cliente}: sem cadeira, foi embora (sem proteção)")
 
-# =============================================================================
 # VERSÃO CORRIGIDA (semáforos + mutex)
-# =============================================================================
 
 clientes_sem    = threading.Semaphore(0)
 barbeiro_sem    = threading.Semaphore(0)

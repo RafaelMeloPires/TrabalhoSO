@@ -50,9 +50,7 @@ def versao_insegura():
     duplicados = len(consumidos_errado) - len(set(consumidos_errado))
     print(f"                Itens duplicados consumidos: {duplicados}")
 
-# =============================================================================
 # VERSÃO CORRIGIDA (semáforos de contagem + mutex)
-# =============================================================================
 
 buffer_seguro = deque()
 mutex    = threading.Semaphore(1)
