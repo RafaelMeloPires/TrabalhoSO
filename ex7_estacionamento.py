@@ -19,10 +19,11 @@ N_VEICULOS  = 10
 vagas_inseguro = CAPACIDADE
 log_inseguro   = []
 
+# Verifica e ocupa vaga sem lock; duas threads podem passar pela checagem simultaneamente e causar overflow.
 def entrar_inseguro(id_v):
     global vagas_inseguro
-    if vagas_inseguro > 0:           # race condition: duas threads podem
-        vagas_inseguro -= 1          # ler vagas > 0 e ambas entrarem
+    if vagas_inseguro > 0:
+        vagas_inseguro -= 1
         log_inseguro.append(f"Veículo {id_v} ENTROU  | vagas livres: {vagas_inseguro}")
         time.sleep(random.uniform(0.05, 0.2))
         vagas_inseguro += 1
@@ -30,6 +31,7 @@ def entrar_inseguro(id_v):
     else:
         log_inseguro.append(f"Veículo {id_v} recusado (sem vagas)")
 
+# Lança todos os veículos sem proteção; detecta e exibe overflow no número de vagas.
 def versao_insegura():
     global vagas_inseguro
     vagas_inseguro = CAPACIDADE
@@ -50,25 +52,27 @@ def versao_insegura():
 # VERSÃO CORRIGIDA (semáforo de contagem + mutex para o log)
 # =============================================================================
 
-semaforo_vagas = threading.Semaphore(CAPACIDADE)   # limita entradas simultâneas
+semaforo_vagas = threading.Semaphore(CAPACIDADE)
 mutex_log      = threading.Lock()
 vagas_atual    = CAPACIDADE
 log_seguro     = []
 
+# Bloqueia no semáforo se não há vaga; entra, estaciona e libera a vaga ao sair, atualizando o log com mutex.
 def entrar_seguro(id_v):
     global vagas_atual
-    semaforo_vagas.acquire()          # bloqueia se não há vaga disponível
+    semaforo_vagas.acquire()
     with mutex_log:
         vagas_atual -= 1
         log_seguro.append(f"Veículo {id_v:02d} ENTROU  | vagas livres: {vagas_atual}")
         print(f"  Veículo {id_v:02d} ENTROU  | vagas livres: {vagas_atual}")
-    time.sleep(random.uniform(0.05, 0.2))   # permanece estacionado
+    time.sleep(random.uniform(0.05, 0.2))
     with mutex_log:
         vagas_atual += 1
         log_seguro.append(f"Veículo {id_v:02d} SAIU    | vagas livres: {vagas_atual}")
         print(f"  Veículo {id_v:02d} SAIU    | vagas livres: {vagas_atual}")
-    semaforo_vagas.release()          # libera vaga para próximo veículo
+    semaforo_vagas.release()
 
+# Lança todos os veículos com semáforo; verifica invariante de vagas >= 0 e exibe resultado.
 def versao_segura():
     global vagas_atual
     vagas_atual = CAPACIDADE

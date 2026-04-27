@@ -19,14 +19,15 @@ N_PROCESSOS = 8
 
 saida_insegura = []
 
+# Imprime documento sem exclusão mútua; linhas de processos distintos podem se entrelaçar na saída.
 def imprimir_inseguro(id_proc, documento):
     print(f"  Processo {id_proc} iniciou impressão de '{documento}'")
-    # Simula escrita de múltiplas linhas — pode ser interrompida
     for linha in range(3):
         time.sleep(random.uniform(0.005, 0.02))
         saida_insegura.append(f"P{id_proc}:linha{linha}")
     print(f"  Processo {id_proc} terminou impressão de '{documento}'")
 
+# Lança todos os processos sem controle; conta e exibe entrelaçamentos detectados no log.
 def versao_insegura():
     saida_insegura.clear()
     threads = [
@@ -35,7 +36,6 @@ def versao_insegura():
     ]
     for t in threads: t.start()
     for t in threads: t.join()
-    # Verifica entrelaçamento
     processos_vistos = []
     for entrada in saida_insegura:
         p = entrada.split(":")[0]
@@ -48,34 +48,35 @@ def versao_insegura():
 # VERSÃO CORRIGIDA — fila FCFS + mutex de impressora
 # =============================================================================
 
-fila_impressao = Queue()    # fila de jobs: (id_proc, documento, evento_conclusao)
+fila_impressao   = Queue()
 mutex_impressora = threading.Lock()
 log_impressao    = []
 
+# Thread dedicada que consome jobs da fila em ordem FCFS com exclusão mútua; encerra ao receber None.
 def gerenciador_impressora():
-    """Thread dedicada que processa a fila em ordem FCFS."""
     while True:
         job = fila_impressao.get()
-        if job is None:          # sinal de encerramento
+        if job is None:
             break
         id_proc, documento, evento = job
-        with mutex_impressora:   # exclusão mútua (só 1 job por vez)
+        with mutex_impressora:
             print(f"  [IMPRESSORA] Imprimindo '{documento}' (Processo {id_proc})...")
             log_impressao.append(f"P{id_proc}:{documento}")
-            time.sleep(random.uniform(0.03, 0.08))   # tempo de impressão
+            time.sleep(random.uniform(0.03, 0.08))
             print(f"  [IMPRESSORA] Concluído  '{documento}'")
-        evento.set()             # notifica o processo que enviou o job
+        evento.set()
         fila_impressao.task_done()
 
+# Enfileira o job com um Event e bloqueia até o gerenciador sinalizar a conclusão da impressão.
 def processo_seguro(id_proc, documento):
-    """Processo que envia job para a fila e aguarda conclusão."""
-    time.sleep(random.uniform(0, 0.05))   # chegada aleatória
+    time.sleep(random.uniform(0, 0.05))
     evento = threading.Event()
     fila_impressao.put((id_proc, documento, evento))
     print(f"  Processo {id_proc} enfileirou '{documento}'")
-    evento.wait()                         # bloqueia até impressão concluir
+    evento.wait()
     print(f"  Processo {id_proc} recebeu documento impresso.")
 
+# Inicia o gerenciador, lança todos os processos e encerra a fila ao final; exibe log ordenado.
 def versao_segura():
     log_impressao.clear()
     gerenciador = threading.Thread(target=gerenciador_impressora, daemon=True)
@@ -88,7 +89,7 @@ def versao_segura():
     for t in threads: t.start()
     for t in threads: t.join()
 
-    fila_impressao.put(None)   # encerra o gerenciador
+    fila_impressao.put(None)
     gerenciador.join(timeout=2)
 
     print(f"[COM FILA FCFS] {len(log_impressao)} documentos impressos em ordem:")

@@ -1,94 +1,121 @@
 """
-Exercício 6.4 — Jantar dos Filósofos
+Exercício 6.5 — Barbeiro Sonolento
 Disciplina: Sistemas Operacionais
-Problema: 5 filósofos alternam entre pensar e comer.
-          Cada filósofo precisa dos 2 garfos adjacentes para comer.
+Problema: barbearia com 1 barbeiro e N cadeiras de espera.
+          Barbeiro dorme quando não há clientes;
+          clientes vão embora se todas as cadeiras estão ocupadas.
 """
 
 import threading
 import time
 import random
 
-N = 5   # número de filósofos
+CADEIRAS_ESPERA = 3
+N_CLIENTES      = 10
 
 # =============================================================================
-# VERSÃO COM DEADLOCK (cada filósofo pega o garfo esquerdo antes do direito)
+# VERSÃO SEM PROTEÇÃO (race condition na contagem de clientes)
 # =============================================================================
 
-garfos_deadlock = [threading.Lock() for _ in range(N)]
+clientes_espera_inseguro = 0
 
-def filosofo_deadlock(i, rodadas=3):
-    esq = i
-    dir = (i + 1) % N
-    for _ in range(rodadas):
-        # Pensa
-        print(f"  Filósofo {i} está pensando...")
-        time.sleep(random.uniform(0.01, 0.05))
-        # Pega garfo esquerdo
-        garfos_deadlock[esq].acquire()
-        print(f"  Filósofo {i} pegou garfo {esq} (esquerdo)")
-        time.sleep(random.uniform(0.005, 0.02))  # pausa que favorece deadlock
-        # Pega garfo direito — PODE DEADLOCKEAR
-        garfos_deadlock[dir].acquire()
-        print(f"  Filósofo {i} está comendo!")
-        time.sleep(random.uniform(0.01, 0.04))
-        garfos_deadlock[dir].release()
-        garfos_deadlock[esq].release()
+# Simula barbeiro atendendo sem sincronização; contagem de clientes pode ser lida incorretamente.
+def barbeiro_inseguro():
+    atendidos = 0
+    for _ in range(N_CLIENTES):
+        time.sleep(random.uniform(0.05, 0.1))
+        if clientes_espera_inseguro > 0:
+            atendidos += 1
+    print(f"[SEM PROTEÇÃO]  Barbeiro atendeu ~{atendidos} clientes (contagem imprecisa)")
 
-def versao_deadlock():
-    print("[VERSÃO DEADLOCK] Iniciando — pode travar...")
-    threads = [threading.Thread(target=filosofo_deadlock, args=(i,)) for i in range(N)]
-    for t in threads: t.start()
-    # Aguarda com timeout para não bloquear a demonstração
-    for t in threads: t.join(timeout=2.0)
-    vivos = [t.is_alive() for t in threads]
-    if any(vivos):
-        print(f"  DEADLOCK detectado! {sum(vivos)} filósofo(s) ainda bloqueado(s).")
+# Ocupa ou libera cadeira sem lock; duas threads podem passar pela verificação simultaneamente.
+def cliente_inseguro(id_cliente):
+    global clientes_espera_inseguro
+    if clientes_espera_inseguro < CADEIRAS_ESPERA:
+        clientes_espera_inseguro += 1   # race condition aqui!
+        time.sleep(random.uniform(0.1, 0.3))
+        clientes_espera_inseguro -= 1
     else:
-        print("  Concluído sem deadlock (foi sorte desta vez).")
+        print(f"  Cliente {id_cliente}: sem cadeira, foi embora (sem proteção)")
 
 # =============================================================================
-# VERSÃO CORRIGIDA — hierarquia de recursos
-# Solução: o filósofo N-1 pega os garfos em ordem INVERSA (dir antes de esq).
-# Isso quebra a circularidade e elimina o deadlock.
+# VERSÃO CORRIGIDA (semáforos + mutex)
 # =============================================================================
 
-garfos_seguro = [threading.Lock() for _ in range(N)]
+clientes_sem    = threading.Semaphore(0)
+barbeiro_sem    = threading.Semaphore(0)
+mutex_barbearia = threading.Lock()
 
-def filosofo_seguro(i, rodadas=3):
-    if i < N - 1:
-        primeiro, segundo = i, (i + 1) % N   # esquerdo → direito
-    else:
-        primeiro, segundo = (i + 1) % N, i   # INVERTIDO para o último filósofo
+cadeiras_livres = CADEIRAS_ESPERA
+estatisticas = {"atendidos": 0, "recusados": 0}
 
-    for r in range(rodadas):
-        print(f"  Filósofo {i} pensando (rodada {r+1})...")
-        time.sleep(random.uniform(0.01, 0.05))
-        garfos_seguro[primeiro].acquire()
-        garfos_seguro[segundo].acquire()
-        print(f"  Filósofo {i} COMENDO (rodada {r+1})!")
-        time.sleep(random.uniform(0.01, 0.04))
-        garfos_seguro[segundo].release()
-        garfos_seguro[primeiro].release()
-    print(f"  Filósofo {i} terminou.")
+# Dorme em clientes_sem enquanto ocioso; acorda, libera cadeira, chama cliente e realiza o corte.
+def barbeiro_seguro():
+    while True:
+        clientes_sem.acquire()
+        with mutex_barbearia:
+            global cadeiras_livres
+            cadeiras_livres += 1
+        barbeiro_sem.release()
+        time.sleep(random.uniform(0.03, 0.08))
+        with mutex_barbearia:
+            estatisticas["atendidos"] += 1
+        if estatisticas["atendidos"] + estatisticas["recusados"] >= N_CLIENTES:
+            break
 
-def versao_segura():
-    print("[VERSÃO CORRIGIDA] Hierarquia de recursos — sem deadlock:")
-    threads = [threading.Thread(target=filosofo_seguro, args=(i,)) for i in range(N)]
+# Ocupa cadeira e acorda barbeiro se houver vaga; caso contrário, registra recusa e sai.
+def cliente_seguro(id_cliente):
+    global cadeiras_livres
+    with mutex_barbearia:
+        if cadeiras_livres > 0:
+            cadeiras_livres -= 1
+            clientes_sem.release()
+        else:
+            estatisticas["recusados"] += 1
+            print(f"  Cliente {id_cliente}: sem cadeira, foi embora")
+            return
+    barbeiro_sem.acquire()
+
+# Executa barbeiro e clientes sem proteção; exibe estimativa imprecisa de atendimentos.
+def versao_insegura():
+    global clientes_espera_inseguro
+    clientes_espera_inseguro = 0
+    threads = [threading.Thread(target=barbeiro_inseguro)]
+    threads += [threading.Thread(target=cliente_inseguro, args=(i,)) for i in range(N_CLIENTES)]
     for t in threads: t.start()
     for t in threads: t.join()
-    print("  Todos os filósofos terminaram com sucesso!")
+
+# Executa barbeiro e clientes com semáforos; exibe contagem exata de atendidos e recusados.
+def versao_segura():
+    global cadeiras_livres
+    cadeiras_livres = CADEIRAS_ESPERA
+    estatisticas["atendidos"] = 0
+    estatisticas["recusados"] = 0
+
+    b = threading.Thread(target=barbeiro_seguro)
+    b.daemon = True
+    b.start()
+
+    def lancar_cliente(i):
+        time.sleep(random.uniform(0, 0.3))
+        cliente_seguro(i)
+
+    threads = [threading.Thread(target=lancar_cliente, args=(i,)) for i in range(N_CLIENTES)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    print(f"[COM SEMÁFOROS] Atendidos={estatisticas['atendidos']} | "
+          f"Recusados={estatisticas['recusados']} | "
+          f"Total={estatisticas['atendidos'] + estatisticas['recusados']}")
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("Exercício 6.4 — Jantar dos Filósofos")
+    print("Exercício 6.5 — Barbeiro Sonolento")
     print("=" * 55)
-    versao_deadlock()
-    print()
+    versao_insegura()
     versao_segura()
     print()
-    print("Justificativa: o deadlock ocorre quando todos os filósofos")
-    print("pegam o garfo esquerdo simultaneamente e aguardam o direito.")
-    print("A solução por hierarquia de recursos impõe que um filósofo")
-    print("(o N-1) inverta a ordem de aquisição, quebrando o ciclo de")
-    print("espera circular que é condição necessária para deadlock.")
+    print("Justificativa: 'clientes_sem' acorda o barbeiro quando há")
+    print("cliente; 'barbeiro_sem' sincroniza a chamada do cliente à")
+    print("cadeira de corte. O mutex protege a variável 'cadeiras_livres',")
+    print("evitando que dois clientes ocupem a mesma cadeira.")

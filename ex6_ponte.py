@@ -18,6 +18,7 @@ N_VEICULOS = 12
 
 na_ponte_inseguro = []
 
+# Entra na ponte sem controle; detecta colisão se houver veículos de sentidos opostos simultâneos.
 def veiculo_inseguro(id_v, sentido):
     na_ponte_inseguro.append(sentido)
     sentidos_simultaneos = set(na_ponte_inseguro)
@@ -26,6 +27,7 @@ def veiculo_inseguro(id_v, sentido):
     time.sleep(random.uniform(0.01, 0.04))
     na_ponte_inseguro.remove(sentido)
 
+# Lança todos os veículos sem controle de sentido; exibe aviso de colisões possíveis.
 def versao_insegura():
     na_ponte_inseguro.clear()
     threads = []
@@ -42,30 +44,32 @@ def versao_insegura():
 #           Quando nenhum veículo do sentido atual está na ponte, o outro lado passa.
 # =============================================================================
 
-mutex_ponte   = threading.Lock()   # exclusão mútua na atualização dos contadores
-ponte_livre   = threading.Lock()   # exclusão mútua para uso da ponte (sentido)
+mutex_ponte   = threading.Lock()
+ponte_livre   = threading.Lock()
 
 contadores  = {"Norte": 0, "Sul": 0}
 log_ordem   = []
 
-# Cada sentido tem seu próprio "primeiro carro abre, último fecha" (Semáforo de leitores)
 mutex_norte = threading.Lock()
 mutex_sul   = threading.Lock()
 
+# Incrementa o contador do sentido; o primeiro veículo adquire ponte_livre bloqueando o sentido oposto.
 def entrar_ponte(sentido):
     mutex = mutex_norte if sentido == "Norte" else mutex_sul
     with mutex:
         contadores[sentido] += 1
-        if contadores[sentido] == 1:     # primeiro veículo do sentido trava a ponte
+        if contadores[sentido] == 1:
             ponte_livre.acquire()
 
+# Decrementa o contador do sentido; o último veículo libera ponte_livre para o sentido oposto.
 def sair_ponte(sentido):
     mutex = mutex_norte if sentido == "Norte" else mutex_sul
     with mutex:
         contadores[sentido] -= 1
-        if contadores[sentido] == 0:     # último veículo libera a ponte para o outro lado
+        if contadores[sentido] == 0:
             ponte_livre.release()
 
+# Atravessa a ponte com segurança usando entrar/sair_ponte; registra passagem no log.
 def veiculo_seguro(id_v, sentido):
     entrar_ponte(sentido)
     log_ordem.append(f"Veículo {id_v:02d} ({sentido})")
@@ -73,6 +77,7 @@ def veiculo_seguro(id_v, sentido):
     time.sleep(random.uniform(0.02, 0.06))
     sair_ponte(sentido)
 
+# Lança todos os veículos com controle de sentido; exibe log completo de travessias sem colisão.
 def versao_segura():
     contadores["Norte"] = 0
     contadores["Sul"]   = 0

@@ -16,16 +16,18 @@ log = []
 # VERSÃO SEM PROTEÇÃO (escritor pode sobrescrever dado em uso)
 # =============================================================================
 
+# Lê o valor do recurso sem garantia de consistência; outro escritor pode alterá-lo durante a leitura.
 def leitor_inseguro(id_leitor):
-    val = recurso_compartilhado["valor"]   # sem garantia de consistência
+    val = recurso_compartilhado["valor"]
     time.sleep(random.uniform(0.001, 0.005))
     log.append(f"Leitor-{id_leitor} leu {val}")
 
+# Escreve no recurso sem exclusão mútua; leitores podem capturar valor parcialmente atualizado.
 def escritor_inseguro(id_escritor, novo_valor):
-    # outra thread pode ler valor parcialmente escrito
     recurso_compartilhado["valor"] = novo_valor
     log.append(f"Escritor-{id_escritor} escreveu {novo_valor}")
 
+# Cria e executa 4 leitores e 2 escritores concorrentes sem proteção; exibe o log resultante.
 def versao_insegura():
     log.clear()
     threads = []
@@ -44,38 +46,37 @@ def versao_insegura():
 # Política: leitores têm prioridade; escritor espera não haver leitores.
 # =============================================================================
 
-mutex_leitores = threading.Lock()    # protege a contagem de leitores ativos
-mutex_escrita  = threading.Lock()    # exclusão mútua para escrita
+mutex_leitores = threading.Lock()
+mutex_escrita  = threading.Lock()
 
 num_leitores = 0
 log_seguro   = []
 
+# Lê o recurso com segurança: 1º leitor bloqueia escritores, último os libera; leitores coexistem.
 def leitor_seguro(id_leitor):
     global num_leitores
-    # Entrada na seção de leitura
     with mutex_leitores:
         num_leitores += 1
-        if num_leitores == 1:          # primeiro leitor bloqueia escritores
+        if num_leitores == 1:
             mutex_escrita.acquire()
 
-    # ---- seção de leitura (paralela entre leitores) ----
     val = recurso_compartilhado["valor"]
     time.sleep(random.uniform(0.001, 0.005))
     log_seguro.append(f"Leitor-{id_leitor}  leu {val}")
-    # ----------------------------------------------------
 
-    # Saída da seção de leitura
     with mutex_leitores:
         num_leitores -= 1
-        if num_leitores == 0:          # último leitor libera escritores
+        if num_leitores == 0:
             mutex_escrita.release()
 
+# Escreve no recurso com acesso exclusivo garantido pelo mutex_escrita.
 def escritor_seguro(id_escritor, novo_valor):
-    with mutex_escrita:                # acesso exclusivo
+    with mutex_escrita:
         recurso_compartilhado["valor"] = novo_valor
         time.sleep(random.uniform(0.002, 0.008))
         log_seguro.append(f"Escritor-{id_escritor} escreveu {novo_valor}")
 
+# Cria e executa 4 leitores e 2 escritores em ordem aleatória com proteção; exibe o log consistente.
 def versao_segura():
     log_seguro.clear()
     recurso_compartilhado["valor"] = 0

@@ -21,14 +21,15 @@ ITERACOES = 50   # menor número de iterações, pois cada uma tem delay proposi
 
 contador_inseguro = 0
 
+# Incrementa o contador sem proteção, simulando não-atomicidade com sleep entre leitura e escrita.
 def incrementar_inseguro():
     global contador_inseguro
     for _ in range(ITERACOES):
-        # Simula a não-atomicidade: lê → pausa (janela de preempção) → escreve
-        temp = contador_inseguro   # 1. leitura
-        time.sleep(0.0001)         # 2. outra thread pode alterar o valor aqui!
-        contador_inseguro = temp + 1  # 3. escrita com valor desatualizado
+        temp = contador_inseguro
+        time.sleep(0.0001)
+        contador_inseguro = temp + 1
 
+# Decrementa o contador sem proteção, criando janela de preempção idêntica à do incremento.
 def decrementar_inseguro():
     global contador_inseguro
     for _ in range(ITERACOES):
@@ -36,6 +37,7 @@ def decrementar_inseguro():
         time.sleep(0.0001)
         contador_inseguro = temp - 1
 
+# Cria e executa as duas threads sem Lock; exibe o resultado inconsistente obtido.
 def versao_insegura():
     global contador_inseguro
     contador_inseguro = 0
@@ -52,14 +54,16 @@ def versao_insegura():
 contador_seguro = 0
 lock = threading.Lock()
 
+# Incrementa o contador dentro de seção crítica protegida por Lock.
 def incrementar_seguro():
     global contador_seguro
     for _ in range(ITERACOES):
-        with lock:                     # <-- seção crítica protegida
+        with lock:
             temp = contador_seguro
-            time.sleep(0.0001)         # mesmo delay — mas agora protegido
+            time.sleep(0.0001)
             contador_seguro = temp + 1
 
+# Decrementa o contador dentro de seção crítica protegida por Lock.
 def decrementar_seguro():
     global contador_seguro
     for _ in range(ITERACOES):
@@ -68,6 +72,7 @@ def decrementar_seguro():
             time.sleep(0.0001)
             contador_seguro = temp - 1
 
+# Cria e executa as duas threads com Lock; exibe o resultado correto garantido.
 def versao_segura():
     global contador_seguro
     contador_seguro = 0

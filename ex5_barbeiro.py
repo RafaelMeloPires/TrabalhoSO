@@ -19,14 +19,16 @@ N_CLIENTES      = 10
 
 clientes_espera_inseguro = 0
 
+# Simula barbeiro atendendo sem sincronização; contagem de clientes pode ser lida incorretamente.
 def barbeiro_inseguro():
     atendidos = 0
     for _ in range(N_CLIENTES):
-        time.sleep(random.uniform(0.05, 0.1))   # corte de cabelo
+        time.sleep(random.uniform(0.05, 0.1))
         if clientes_espera_inseguro > 0:
             atendidos += 1
     print(f"[SEM PROTEÇÃO]  Barbeiro atendeu ~{atendidos} clientes (contagem imprecisa)")
 
+# Ocupa ou libera cadeira sem lock; duas threads podem passar pela verificação simultaneamente.
 def cliente_inseguro(id_cliente):
     global clientes_espera_inseguro
     if clientes_espera_inseguro < CADEIRAS_ESPERA:
@@ -40,41 +42,41 @@ def cliente_inseguro(id_cliente):
 # VERSÃO CORRIGIDA (semáforos + mutex)
 # =============================================================================
 
-# Semáforos de sinalização
-clientes_sem  = threading.Semaphore(0)   # barbeiro aguarda aqui quando ocioso
-barbeiro_sem  = threading.Semaphore(0)   # cliente aguarda chamado do barbeiro
+clientes_sem    = threading.Semaphore(0)
+barbeiro_sem    = threading.Semaphore(0)
 mutex_barbearia = threading.Lock()
 
 cadeiras_livres = CADEIRAS_ESPERA
 estatisticas = {"atendidos": 0, "recusados": 0}
 
+# Dorme em clientes_sem enquanto ocioso; acorda, libera cadeira, chama cliente e realiza o corte.
 def barbeiro_seguro():
     while True:
-        clientes_sem.acquire()           # dorme enquanto não há clientes
+        clientes_sem.acquire()
         with mutex_barbearia:
             global cadeiras_livres
-            cadeiras_livres += 1         # libera cadeira de espera
-        barbeiro_sem.release()           # chama próximo cliente
-        # Realiza o corte
+            cadeiras_livres += 1
+        barbeiro_sem.release()
         time.sleep(random.uniform(0.03, 0.08))
         with mutex_barbearia:
             estatisticas["atendidos"] += 1
         if estatisticas["atendidos"] + estatisticas["recusados"] >= N_CLIENTES:
             break
 
+# Ocupa cadeira e acorda barbeiro se houver vaga; caso contrário, registra recusa e sai.
 def cliente_seguro(id_cliente):
     global cadeiras_livres
     with mutex_barbearia:
         if cadeiras_livres > 0:
-            cadeiras_livres -= 1         # ocupa cadeira
-            clientes_sem.release()       # acorda barbeiro
+            cadeiras_livres -= 1
+            clientes_sem.release()
         else:
             estatisticas["recusados"] += 1
             print(f"  Cliente {id_cliente}: sem cadeira, foi embora")
             return
-    barbeiro_sem.acquire()               # aguarda ser chamado
-    # Sendo atendido...
+    barbeiro_sem.acquire()
 
+# Executa barbeiro e clientes sem proteção; exibe estimativa imprecisa de atendimentos.
 def versao_insegura():
     global clientes_espera_inseguro
     clientes_espera_inseguro = 0
@@ -83,6 +85,7 @@ def versao_insegura():
     for t in threads: t.start()
     for t in threads: t.join()
 
+# Executa barbeiro e clientes com semáforos; exibe contagem exata de atendidos e recusados.
 def versao_segura():
     global cadeiras_livres
     cadeiras_livres = CADEIRAS_ESPERA
