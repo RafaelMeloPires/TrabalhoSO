@@ -30,7 +30,7 @@ def barbeiro_inseguro():
 def cliente_inseguro(id_cliente):
     global clientes_espera_inseguro
     if clientes_espera_inseguro < CADEIRAS_ESPERA:
-        clientes_espera_inseguro += 1   # race condition aqui!
+        clientes_espera_inseguro += 1   
         time.sleep(random.uniform(0.1, 0.3))
         clientes_espera_inseguro -= 1
     else:

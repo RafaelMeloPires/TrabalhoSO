@@ -40,8 +40,6 @@ def versao_insegura():
 
 
 # VERSÃO CORRIGIDA — controle por sentido com prevenção de inanição
-# Política: um sentido ocupa a ponte; o outro aguarda.
-#           Quando nenhum veículo do sentido atual está na ponte, o outro lado passa.
 
 
 mutex_ponte   = threading.Lock()

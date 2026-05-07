@@ -12,9 +12,9 @@ from collections import deque
 CAPACIDADE = 5
 N_ITENS    = 15
 
-# =============================================================================
+
 # VERSÃO SEM PROTEÇÃO (condição de corrida e estouro de buffer)
-# =============================================================================
+
 
 buffer_inseguro = deque()
 produzidos_errado  = []
